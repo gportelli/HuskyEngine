@@ -123,8 +123,9 @@ void ascii_viewport_draw_rectangle(viewport_handle handle,
   }
 }
 
-//https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm#Algorithm_for_integer_arithmetic
 /*
+https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm#Algorithm_for_integer_arithmetic
+
 line from (x0, y0) to (x1, y1)
 
 Let's write the line in this form: y = f(x)
