@@ -1,4 +1,4 @@
-#include "includes/ascii_viewport.h"
+#include "includes/viewport.h"
 
 #include "stdio.h"
 
@@ -8,7 +8,7 @@ typedef struct ascii_viewport_ {
   float *framebuffer;
 } ascii_viewport;
 
-void ascii_viewport_clear(viewport_handle handle)
+void viewport_clear(viewport_handle handle)
 {
   ascii_viewport* vp = (ascii_viewport*)handle;
 
@@ -16,11 +16,11 @@ void ascii_viewport_clear(viewport_handle handle)
   memset(vp->framebuffer, 0, fb_size);
 }
 
-ascii_viewport_info ascii_viewport_get_info(viewport_handle handle)
+viewport_info viewport_get_info(viewport_handle handle)
 {
   ascii_viewport* vp = (ascii_viewport*)handle;
 
-  ascii_viewport_info info;
+  viewport_info info;
 
   info.width = vp->cols;
   info.height = vp->rows / vp->aspect_ratio;
@@ -29,7 +29,7 @@ ascii_viewport_info ascii_viewport_get_info(viewport_handle handle)
   return info;
 }
 
-viewport_handle ascii_viewport_init(uint cols, uint rows, float aspect)
+viewport_handle viewport_init(uint cols, uint rows, float aspect)
 {
   ascii_viewport* viewport = malloc(sizeof(ascii_viewport));
 
@@ -40,12 +40,12 @@ viewport_handle ascii_viewport_init(uint cols, uint rows, float aspect)
   const uint fb_size = sizeof(float) * cols * rows;
   viewport->framebuffer = malloc(fb_size);
   
-  ascii_viewport_clear(viewport);
+  viewport_clear(viewport);
 
   return (viewport_handle)viewport;
 }
 
-void ascii_viewport_delete(viewport_handle handle)
+void viewport_delete(viewport_handle handle)
 {
   ascii_viewport* vp = (ascii_viewport*)handle;
 
@@ -53,7 +53,7 @@ void ascii_viewport_delete(viewport_handle handle)
   free(vp);
 }
 
-void ascii_viewport_draw_pixel(
+void viewport_draw_pixel(
   viewport_handle handle, uint x, uint y, float color)
 {
   ascii_viewport* vp = (ascii_viewport*)handle;
@@ -61,7 +61,7 @@ void ascii_viewport_draw_pixel(
   vp->framebuffer[y * vp->cols + x] = color;
 }
 
-void ascii_viewport_render(viewport_handle handle)
+void viewport_render(viewport_handle handle)
 {
   ascii_viewport* vp = (ascii_viewport*)handle;
 
@@ -83,48 +83,20 @@ void ascii_viewport_render(viewport_handle handle)
   }
 }
 
-void ascii_viewport_draw_rectangle(viewport_handle handle,
+void viewport_draw_rectangle(viewport_handle handle,
   uint x, uint y, uint w, uint h, float color)
 {
   ascii_viewport* vp = (ascii_viewport*)handle;
 
-  y *= vp->aspect_ratio;
-  h *= vp->aspect_ratio;
-
-  if(x >= vp->cols) return;
-  if(y >= vp->rows) return;
-
-  for(uint i=x; i<x+w && x<vp->cols; i++)
-  {
-    ascii_viewport_draw_pixel(vp, i, y, color);
-  }
-
-  for(uint i=y; i<y+h && y<vp->rows; i++)
-  {
-    ascii_viewport_draw_pixel(vp, x, i, color);
-  }
-
-  const uint x1 = x+w-1;
-  if(x1 > x && x1 < vp->cols)
-  {
-    for(uint i=y; i<y+h; i++)
-    {
-      ascii_viewport_draw_pixel(vp, x1, i, color);
-    }
-  }
-
-  const uint y1 = y+h-1;
-  if(y1 > y && y1 < vp->rows)
-  {
-    for(uint i=x; i<x+w; i++)
-    {
-      ascii_viewport_draw_pixel(vp, i, y1, color);
-    }
-  }
+  viewport_draw_line(handle, x, y, x + w, y, color);
+  viewport_draw_line(handle, x + w, y, x + w, y + h, color);
+  viewport_draw_line(handle, x + w, y + h, x, y + h, color);
+  viewport_draw_line(handle, x, y + h, x, y, color);
 }
 
 /*
 https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm#Algorithm_for_integer_arithmetic
+http://members.chello.at/~easyfilter/Bresenham.pdf
 
 line from (x0, y0) to (x1, y1)
 
@@ -193,8 +165,33 @@ plotLine(x0, y0, x1, y1)
             D = D - 2*dx
         end if
         D = D + 2*dy
+
+The following algorithm is based on http://members.chello.at/~easyfilter/Bresenham.pdf at 1.7
+It computes the error at a pixel (x+1, y+1), (x+1,y) (x,y+1) and by comparison chooses the next
+one.
+
+set up x, y to x0, y0
+set up error variable exy for P(x0+1,y0+1) loop
+set pixel x, y
+  if ex + exy > 0 then increment x, sub difference error 
+  if ey + exy < 0 then increment y, add difference error
+loop until end pixel
+
+note that for a straight line:
+exy = e + dx - dy
+ex = exy + dy
+ey = exy - dx
+
+so
+
+ex + exy = exy + dy + exy = 2exy + dy >= 0 => 2exy >= -dy
+ey + exy = exy - dx + exy = 2exy - dx <= 0 => 2exy <= dx
+
+that's why in the function below, the disequations are expressed in term of 2*error
+compared with dy and dx. Notice also that dy is negative by definition, hence the positive
+use of dy variable in the function.
 */
-void ascii_viewport_draw_line(viewport_handle handle, 
+void viewport_draw_line(viewport_handle handle, 
   float px0, float py0, float px1, float py1, float color)
 {
   ascii_viewport* vp = (ascii_viewport*)handle;
@@ -217,7 +214,7 @@ void ascii_viewport_draw_line(viewport_handle handle,
     
   while(1)
   {
-    ascii_viewport_draw_pixel(vp, x0, y0, color);
+    viewport_draw_pixel(vp, x0, y0, color);
     
     if(x0 == x1 && y0 == y1) break;
     

@@ -2,7 +2,7 @@
 #include "unistd.h"
 #include "stdio.h"
 
-#include "includes/ascii_viewport.h"
+#include "includes/viewport.h"
 #include "includes/terminal_functions.h"
 
 void test()
@@ -22,7 +22,7 @@ void test()
 
 void test_viewport(viewport_handle vp)
 {
-  ascii_viewport_info info = ascii_viewport_get_info(vp);
+  viewport_info info = viewport_get_info(vp);
 
   const float a = info.aspect_ratio;
   const uint w = info.width, h = info.height;
@@ -31,14 +31,14 @@ void test_viewport(viewport_handle vp)
   {
     for(int x=0; x<w; x++)
     {
-      ascii_viewport_draw_pixel(vp, x, y, (x + y/a) / max_color);
+      viewport_draw_pixel(vp, x, y, (x + y/a) / max_color);
     }
   }
 }
 
 void test_watch(viewport_handle vp)
 {
-  ascii_viewport_info info = ascii_viewport_get_info(vp);
+  viewport_info info = viewport_get_info(vp);
 
   const uint cx = info.width / 2;
   const uint cy = info.height / 2;
@@ -49,9 +49,9 @@ void test_watch(viewport_handle vp)
   {
     const float rad = angle*pi/180.0;
 
-    ascii_viewport_clear(vp);
-    ascii_viewport_draw_line(vp, cx, cy, cx + cos(rad) * len, cy + sin(rad) * len, 1);
-    ascii_viewport_render(vp);
+    viewport_clear(vp);
+    viewport_draw_line(vp, cx, cy, cx + cos(rad) * len, cy + sin(rad) * len, 1);
+    viewport_render(vp);
 
     usleep(33000);
   }
@@ -62,20 +62,20 @@ int main()
   uint l=40;
   float a=0.5;
 
-  viewport_handle myvp = ascii_viewport_init(l, l, a);
+  viewport_handle myvp = viewport_init(l, l, a);
 
   terminal_clear_screen();
   terminal_hide_cursor();
 
   //test_viewport(myvp); 
 
-  //ascii_viewport_draw_rectangle(myvp, 3, 3, 8, 8, 1);  
-  test_watch(myvp);
+  viewport_draw_rectangle(myvp, 3, 3, 8, 8, 1);  
+  //test_watch(myvp);
+  //viewport_draw_line(myvp, 19, 19, 39, 23, 1);
 
-  //ascii_viewport_draw_line(myvp, 19, 19, 39, 23, 1);
-  //ascii_viewport_render(myvp);
+  viewport_render(myvp);
     
-  ascii_viewport_delete(myvp);
+  viewport_delete(myvp);
   myvp = NULL;
 
   terminal_show_cursor();
