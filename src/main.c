@@ -1,6 +1,7 @@
-#include "math.h"
-#include "unistd.h"
-#include "stdio.h"
+#include <math.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <time.h>
 
 #include "includes/viewport.h"
 #include "includes/terminal_functions.h"
@@ -36,21 +37,34 @@ void test_viewport(viewport_handle vp)
   }
 }
 
-void test_watch(viewport_handle vp)
+void test_clock(viewport_handle vp)
 {
   viewport_info info = viewport_get_info(vp);
 
   const uint cx = info.width / 2;
   const uint cy = info.height / 2;
-  const uint len = cx - 1;
+  const uint radius = (cx < cy ? cx : cy) - 1;
+  const uint big_len = radius * 0.8;
+  const uint small_len = radius * 0.5;
+
   const float pi = 3.1415926;
 
-  for(int angle=0; angle<=360; angle +=5)
+  for(;;)
   {
-    const float rad = angle*pi/180.0;
+    time_t t = time(NULL);   
+    struct tm *tm = localtime(&t);
+
+    const float hour_rad = tm->tm_hour / 6.0 * pi;
+    const float min_rad = tm->tm_min / 30.0 * pi;
+    const float sec_rad = tm->tm_sec / 30.0 * pi;
 
     viewport_clear(vp);
-    viewport_draw_line(vp, cx, cy, cx + cos(rad) * len, cy + sin(rad) * len, 1);
+    viewport_draw_ellipse(vp, cx, cy, radius, radius, 1);
+    
+    viewport_draw_line(vp, cx, cy, cx + sin(hour_rad) * small_len, cy - cos(hour_rad) * small_len, 1);
+    viewport_draw_line(vp, cx, cy, cx + sin(min_rad) * big_len, cy - cos(min_rad) * big_len, 1);
+    viewport_draw_line(vp, cx, cy, cx + sin(sec_rad) * big_len, cy - cos(sec_rad) * big_len, 1);
+    
     viewport_render(vp);
 
     usleep(33000);
@@ -69,9 +83,10 @@ int main()
 
   //test_viewport(myvp); 
 
-  viewport_draw_rectangle(myvp, 3, 3, 8, 8, 1);  
-  //test_watch(myvp);
+  //viewport_draw_rectangle(myvp, 3, 3, 8, 8, 1);  
+  test_clock(myvp);
   //viewport_draw_line(myvp, 19, 19, 39, 23, 1);
+  //viewport_draw_ellipse(myvp, 19, 19, 10, 5, 1);
 
   viewport_render(myvp);
     

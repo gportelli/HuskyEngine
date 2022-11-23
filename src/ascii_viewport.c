@@ -54,9 +54,11 @@ void viewport_delete(viewport_handle handle)
 }
 
 void viewport_draw_pixel(
-  viewport_handle handle, uint x, uint y, float color)
+  viewport_handle handle, int x, int y, float color)
 {
   ascii_viewport* vp = (ascii_viewport*)handle;
+
+  if(x<0 || y<0 || x>=vp->cols || y>=vp->rows) return;
 
   vp->framebuffer[y * vp->cols + x] = color;
 }
@@ -84,7 +86,7 @@ void viewport_render(viewport_handle handle)
 }
 
 void viewport_draw_rectangle(viewport_handle handle,
-  uint x, uint y, uint w, uint h, float color)
+  int x, int y, int w, int h, float color)
 {
   ascii_viewport* vp = (ascii_viewport*)handle;
 
@@ -192,17 +194,12 @@ compared with dy and dx. Notice also that dy is negative by definition, hence th
 use of dy variable in the function.
 */
 void viewport_draw_line(viewport_handle handle, 
-  float px0, float py0, float px1, float py1, float color)
+  int x0, int y0, int x1, int y1, float color)
 {
   ascii_viewport* vp = (ascii_viewport*)handle;
 
-  py0 *= vp->aspect_ratio;
-  py1 *= vp->aspect_ratio;
-
-  int x0 = roundf(px0);
-  int y0 = roundf(py0);
-  const int x1 = roundf(px1);
-  const int y1 = roundf(py1);
+  y0 *= vp->aspect_ratio;
+  y1 *= vp->aspect_ratio;
 
   const int dx = abs(x1 - x0);
   const int sx = x0 < x1 ? 1 : -1;
@@ -235,4 +232,51 @@ void viewport_draw_line(viewport_handle handle,
       y0 += sy;
     }
   }
+}
+
+void viewport_draw_ellipse(viewport_handle handle, int xm, int ym, int a, int b, float color)
+{
+  ascii_viewport* vp = (ascii_viewport*)handle;
+
+  ym = ym * vp->aspect_ratio;
+  b = b * vp->aspect_ratio;
+
+  int x = -a, y = 0; /* II. quadrant from bottom left to top right */
+  
+  long e2 = b;
+  long dx = (1 + 2*x) * e2 * e2;
+  long dy = x*x;
+  long err = dx + dy; /* error of 1.step */
+  long a2 = a*a;
+  long b2 = b*b;
+
+  do 
+  {
+    viewport_draw_pixel(vp, xm-x, ym+y, color); /*   I. Quadrant */
+    viewport_draw_pixel(vp, xm+x, ym+y, color); /*  II. Quadrant */
+    viewport_draw_pixel(vp, xm+x, ym-y, color); /* III. Quadrant */
+    viewport_draw_pixel(vp, xm-x, ym-y, color); /*  IV. Quadrant */
+
+    e2 = 2*err;
+    if (e2 >= dx)
+    {
+      x++;
+      dx += 2*b2;
+      err += dx;
+    }
+
+    if (e2 <= dy)
+    {
+      y++;
+      dy += 2*a2;
+      err += dy;
+    }
+  } 
+  while (x <= 0);
+
+  while (y++ < b) 
+  { 
+    viewport_draw_pixel(vp, xm, ym+y, color); 
+    viewport_draw_pixel(vp, xm, ym-y, color);
+  } 
 }
