@@ -24,13 +24,16 @@ viewport_handle viewport_init(uint cols, uint rows, float aspect);
 void viewport_delete(viewport_handle handle);
 
 void viewport_draw_pixel(viewport_handle handle, int x, int y, float color);
+void viewport_draw_pixel_alpha(viewport_handle handle, int x, int y, float color, float alpha);
 
 void viewport_render(viewport_handle handle);
 
 void viewport_draw_rectangle(viewport_handle handle, int x, int y, int w, int h, float color);
 
 void viewport_draw_line(viewport_handle handle, int px0, int py0, int px1, int py1, float color);
+void viewport_draw_line_AA(viewport_handle handle, int x0, int y0, int x1, int y1, float color);
 
 void viewport_draw_ellipse(viewport_handle handle, int x, int y, int a, int b, float color);
+void viewport_draw_ellipse_AA(viewport_handle handle, int x0, int y0, int a, int b, float color);
 
 #endif

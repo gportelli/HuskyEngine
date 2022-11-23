@@ -59,11 +59,11 @@ void test_clock(viewport_handle vp)
     const float sec_rad = tm->tm_sec / 30.0 * pi;
 
     viewport_clear(vp);
-    viewport_draw_ellipse(vp, cx, cy, radius, radius, 1);
+    viewport_draw_ellipse_AA(vp, 0, 0, info.width-1, info.height-1, 1);
     
-    viewport_draw_line(vp, cx, cy, cx + sin(hour_rad) * small_len, cy - cos(hour_rad) * small_len, 1);
-    viewport_draw_line(vp, cx, cy, cx + sin(min_rad) * big_len, cy - cos(min_rad) * big_len, 1);
-    viewport_draw_line(vp, cx, cy, cx + sin(sec_rad) * big_len, cy - cos(sec_rad) * big_len, 1);
+    viewport_draw_line_AA(vp, cx, cy, cx + sin(hour_rad) * small_len, cy - cos(hour_rad) * small_len, 1);
+    viewport_draw_line_AA(vp, cx, cy, cx + sin(min_rad) * big_len, cy - cos(min_rad) * big_len, 1);
+    viewport_draw_line_AA(vp, cx, cy, cx + sin(sec_rad) * big_len, cy - cos(sec_rad) * big_len, 1);
     
     viewport_render(vp);
 
@@ -86,6 +86,8 @@ int main()
   //viewport_draw_rectangle(myvp, 3, 3, 8, 8, 1);  
   test_clock(myvp);
   //viewport_draw_line(myvp, 19, 19, 39, 23, 1);
+  //viewport_draw_line_AA(myvp, 19, 19, 39, 19, 1);
+
   //viewport_draw_ellipse(myvp, 19, 19, 10, 5, 1);
 
   viewport_render(myvp);

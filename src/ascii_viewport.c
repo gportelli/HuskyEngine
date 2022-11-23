@@ -63,6 +63,17 @@ void viewport_draw_pixel(
   vp->framebuffer[y * vp->cols + x] = color;
 }
 
+void viewport_draw_pixel_alpha(
+  viewport_handle handle, int x, int y, float color, float alpha)
+{
+  ascii_viewport* vp = (ascii_viewport*)handle;
+
+  if(x<0 || y<0 || x>=vp->cols || y>=vp->rows) return;
+
+  float curr_color = vp->framebuffer[y * vp->cols + x];
+  vp->framebuffer[y * vp->cols + x] = color * alpha + curr_color * (1 - alpha);
+}
+
 void viewport_render(viewport_handle handle)
 {
   ascii_viewport* vp = (ascii_viewport*)handle;
@@ -279,4 +290,124 @@ void viewport_draw_ellipse(viewport_handle handle, int xm, int ym, int a, int b,
     viewport_draw_pixel(vp, xm, ym+y, color); 
     viewport_draw_pixel(vp, xm, ym-y, color);
   } 
+}
+
+void viewport_draw_ellipse_AA(viewport_handle handle, int x0, int y0, int x1, int y1, float color)
+{
+  ascii_viewport* vp = (ascii_viewport*)handle;
+
+  y0 *= vp->aspect_ratio;
+  y1 *= vp->aspect_ratio;
+
+  long a = abs(x1-x0), b = abs(y1-y0), b1 = b&1;
+  float dx = 4*(a-1.0)*b*b, dy = 4*(b1+1)*a*a;
+  float ed, i, err = b1*a*a-dx+dy;
+  int f;
+
+  if (a == 0 || b == 0) return viewport_draw_pixel(vp, x0, y0, color);
+  
+  if (x0 > x1) { x0 = x1; x1 += a; }/* if called with swapped points */
+  if (y0 > y1) y0 = y1;
+  y0 += (b+1)/2; y1 = y0-b1;
+  a = 8*a*a; b1 = 8*b*b;
+  
+  for (;;) 
+  {
+    i = fmin(dx, dy); 
+    ed = fmax(dx, dy);
+
+    if (y0 == y1+1 && err > dy && a > b1) ed = 4./a;   /* x-tip */
+    else ed = 1./(ed+2*ed*i*i/(4*ed*ed+i*i));     /* approximation */
+    i = 1.0 - ed*fabs(err+dx-dy);   /* get intensity value by pixel error */
+    
+    viewport_draw_pixel_alpha(vp, x0, y0, color, i); 
+    viewport_draw_pixel_alpha(vp, x0, y1, color, i);
+    viewport_draw_pixel_alpha(vp, x1, y0, color, i); 
+    viewport_draw_pixel_alpha(vp, x1, y1, color, i);
+    
+    f = 2*err+dy;
+    if (f >= 0) 
+    {
+      /* x step, remember condition */
+      if (x0 >= x1) break;
+      i = 1.0 - ed*(err+dx);
+      
+      if (i < 1) 
+      {
+         viewport_draw_pixel_alpha(vp, x0,y0+1, color, i); 
+         viewport_draw_pixel_alpha(vp, x0,y1-1, color, i);
+         viewport_draw_pixel_alpha(vp, x1,y0+1, color, i); 
+         viewport_draw_pixel_alpha(vp, x1,y1-1, color, i);
+      }  /* do error increment later since values are still needed */
+    }
+
+    if (2*err <= dx) 
+    {
+      i = 1.0 - ed*(dy-err);
+      if (i < 1) 
+      {
+        viewport_draw_pixel_alpha(vp, x0+1,y0, color, i); 
+        viewport_draw_pixel_alpha(vp, x1-1,y0, color, i);
+        viewport_draw_pixel_alpha(vp, x0+1,y1, color, i); 
+        viewport_draw_pixel_alpha(vp, x1-1,y1, color, i);
+      }
+
+      y0++; y1--; err += dy += a;
+    }
+
+    /* y step */
+    if (f > 0) 
+    { 
+      x0++; 
+      x1--; 
+      err -= dx -= b1; 
+    }    /* x error increment */
+  }
+
+  if (--x0 == x1++) 
+  {              /* too early stop of flat ellipses */
+    while (y0-y1 < b) 
+    {
+      i = 1.0 - 4.0*fabs(err+dx)/b1;       /* -> finish tip of ellipse */
+      viewport_draw_pixel_alpha(vp, x0,++y0, color, i); 
+      viewport_draw_pixel_alpha(vp, x1,y0, color, i);
+      viewport_draw_pixel_alpha(vp, x0,--y1, color, i); 
+      viewport_draw_pixel_alpha(vp, x1,y1, color, i);
+      err += dy += a;
+    }
+  } 
+}
+
+void viewport_draw_line_AA(viewport_handle handle, int x0, int y0, int x1, int y1, float color)
+{
+  ascii_viewport* vp = (ascii_viewport*)handle;
+
+  y0 *= vp->aspect_ratio;
+  y1 *= vp->aspect_ratio;
+
+  int dx = abs(x1-x0), sx = x0 < x1 ? 1 : -1;
+  int dy = abs(y1-y0), sy = y0 < y1 ? 1 : -1;
+  
+  int x2, e2, err = dx-dy;                       /* error value e_xy */
+  float ed = dx+dy == 0 ? 1 : sqrt((float)dx*dx+(float)dy*dy);
+  
+  for ( ; ; )
+  {                                         /* pixel loop */
+    viewport_draw_pixel_alpha(vp, x0, y0, color, 1.0 - abs(err-dx+dy)/ed);
+
+    e2 = err; x2 = x0;
+    if (2*e2 >= -dx) 
+    {                                    /* x step */
+      if (x0 == x1) break;
+      if (e2+dy < ed) viewport_draw_pixel_alpha(vp, x0, y0+sy, color, 1.0 - (e2+dy)/ed);
+      err -= dy; x0 += sx;
+    }
+
+    if (2*e2 <= dy) 
+    {                                     /* y step */
+      if (y0 == y1) break;
+      if (dx-e2 < ed) viewport_draw_pixel_alpha(vp, x2+sx, y0, color, 1.0 - (dx-e2)/ed);
+      err += dx; y0 += sy;
+    } 
+  }
 }
